@@ -1,0 +1,58 @@
+---
+- name: Install and configure Nginx web server
+  hosts: web1
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Create index.html
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Web1 Server</title>
+          </head>
+          <body>
+            <h1>Welcome to web1</h1>
+            <p>This page was created using Ansible.</p>
+          </body>
+          </html>
+        owner: www-data
+        group: www-data
+        mode: "0644"
+
+    - name: Enable Nginx
+      ansible.builtin.command:
+        cmd: update-rc.d nginx defaults
+      changed_when: false
+
+    - name: Start Nginx
+      ansible.builtin.shell: |
+        if ! pgrep -x nginx >/dev/null; then
+          nginx
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+        
+
+    - name: Verify Nginx responds
+      ansible.builtin.uri:
+        url: http://localhost/
+        status_code: 200
+      register: nginx_response
+
+    - name: Display verification result
+      ansible.builtin.debug:
+        msg: "Nginx is responding on web1 with HTTP status {{ nginx_response.status }}"
